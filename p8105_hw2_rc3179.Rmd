@@ -47,9 +47,51 @@ precip2018_data =
 #Combine precipitation datasets and convert month to characters
 combined_precip = 
   bind_rows(precip2017_data, precip2018_data) %>% 
-  mutate(month = c(month.name,month.name))
+  mutate(month = month.name[month])
 ```
 
 The Mr. Trash Wheel database shows that there are a total of `r trash_data %>% count() %>% pull(n)` observations and `r trash_data %>% pull(dumpster) %>% last()` dumpsters which collected trash between `r trash_data %>% pull(month) %>% first()` `r trash_data %>% pull(year) %>% first()` and `r trash_data %>% pull(month) %>% last()` `r trash_data %>% pull(year) %>% last()`. In total, Mr. Trash Wheel collected `r trash_data %>% pull(weight_tons) %>% sum()` tons of trash with a volume of `r trash_data %>% pull(volume_cubic_yards) %>% sum()` in cubic yards. The median number of sports balls pulled from dumpsters in 2017 was `r trash_data %>% filter(year==2017) %>% pull(sports_balls) %>% median()`. In terms of precipitation in 2017 and 2018 combined, there were a total of `r combined_precip %>% count() %>% pull(n)` observations with a total precipitation of `r combined_precip %>% filter(year==2017) %>% pull(total) %>% sum()` in 2017 and total precipitation of `r combined_precip %>% filter(year==2018) %>% pull(total) %>% sum()` in 2018. 
 
 ## Problem 2
+```{r}
+#Read in pols-month.csv and clean
+pols = 
+  read_csv("./data/pols-month.csv") %>% 
+  janitor::clean_names() %>% 
+  separate(mon, into = c("year", "month", "day"), sep = "-", convert = TRUE) %>% 
+  mutate(month = month.name[month]) %>% 
+  mutate(president = if_else(prez_gop==1, "gop", "dem")) %>% 
+  select(-prez_gop, -prez_dem, -day)
+```
+
+```{r}
+#Read in snp.csv and clean
+snp = 
+  read_csv("./data/snp.csv") %>% 
+  janitor::clean_names() %>% 
+  separate(date, into = c("month", "day", "year"), sep = "/", convert = TRUE) %>% 
+  mutate(month = month.name[month]) %>% 
+  select(-day) %>% 
+  arrange(year, month) %>% 
+  select(year, month, everything())
+```
+
+```{r}
+#Read in unemployment.csv and tiday to long format with same variable names/formats
+unemployment = 
+  read_csv("./data/unemployment.csv") %>% 
+  pivot_longer(Jan:Dec, names_to = "month", values_to = "unemployment_rate") %>% 
+  mutate(month = month.name[match(month, month.abb)]) %>% 
+  janitor::clean_names() %>% 
+  arrange(year, month)
+```
+
+```{r}
+#Merge snp into pols then merge unemployment into result
+pol_data = 
+  full_join(pols, snp, by = c("year", "month")) %>% 
+  full_join(unemployment, by = c("year", "month"))
+```
+The pols-month dataset contained data on the number of positions Democrats and Republicans held in Congress, as governors, or as the President, spanning from `r pols %>% pull(month) %>% first()` `r pols %>% pull(year) %>% first()` to `r pols %>% pull(month) %>% last()` `r pols %>% pull(year) %>% last()`. The snp dataset contained the closing value of the S&P index for each month, spanning from `r snp %>% pull(month) %>% first()` `r snp %>% pull(year) %>% first()` to `r snp %>% pull(month) %>% last()` `r snp %>% pull(year) %>% last()`. The unemployment dataset contained the unemployment rate for each month, spanning from `r unemployment %>% pull(month) %>% first()` `r unemployment %>% pull(year) %>% first()` to `r unemployment %>% pull(month) %>% last()` `r unemployment %>% pull(year) %>% last()`. The final dataset had dimensions of `r pol_data %>% dim_desc()`, with data spanning from `r pol_data %>% pull(month) %>% first()` `r pol_data%>% pull(year) %>% first()` to `r pol_data %>% pull(month) %>% last()` `r pol_data %>% pull(year) %>% last()` and variables of `r pol_data %>% tbl_vars()`.
+
+## Problem 3
