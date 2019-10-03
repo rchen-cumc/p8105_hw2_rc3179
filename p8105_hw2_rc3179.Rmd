@@ -21,6 +21,7 @@ trash_data =
     range = "A2:N370") %>% 
   janitor::clean_names() %>% 
   drop_na(dumpster) %>% 
+  mutate(sports_balls = round(sports_balls)) %>% 
   mutate(sports_balls = as.integer(sports_balls))
 
 ```
@@ -95,3 +96,43 @@ pol_data =
 The pols-month dataset contained data on the number of positions Democrats and Republicans held in Congress, as governors, or as the President, spanning from `r pols %>% pull(month) %>% first()` `r pols %>% pull(year) %>% first()` to `r pols %>% pull(month) %>% last()` `r pols %>% pull(year) %>% last()`. The snp dataset contained the closing value of the S&P index for each month, spanning from `r snp %>% pull(month) %>% first()` `r snp %>% pull(year) %>% first()` to `r snp %>% pull(month) %>% last()` `r snp %>% pull(year) %>% last()`. The unemployment dataset contained the unemployment rate for each month, spanning from `r unemployment %>% pull(month) %>% first()` `r unemployment %>% pull(year) %>% first()` to `r unemployment %>% pull(month) %>% last()` `r unemployment %>% pull(year) %>% last()`. The final dataset had dimensions of `r pol_data %>% dim_desc()`, with data spanning from `r pol_data %>% pull(month) %>% first()` `r pol_data%>% pull(year) %>% first()` to `r pol_data %>% pull(month) %>% last()` `r pol_data %>% pull(year) %>% last()` and variables of `r pol_data %>% tbl_vars()`.
 
 ## Problem 3
+```{r}
+baby_names = 
+  read_csv("./data/Popular_Baby_Names.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(
+    childs_first_name = str_to_title(childs_first_name),
+    ethnicity = if_else(ethnicity=="ASIAN AND PACI", "ASIAN AND PACIFIC ISLANDER", ethnicity),
+    ethnicity = if_else(ethnicity=="BLACK NON HISP", "BLACK NON HISPANIC", ethnicity),
+    ethnicity = if_else(ethnicity=="WHITE NON HISP", "WHITE NON HISPANIC", ethnicity)
+    ) %>% 
+  distinct()
+```
+
+```{r}
+#Table to show the rank in popularity of the name "Olivia" over time by ethnicity
+olivia_data = 
+  filter(baby_names, childs_first_name == "Olivia") %>% 
+  select(year_of_birth, ethnicity, rank) %>% 
+  pivot_wider(names_from = "year_of_birth", values_from = "rank")
+
+olivia_data
+```
+
+```{r}
+#Table to show most popular male baby names over time
+boy_names = 
+  filter(baby_names, gender=="MALE", rank==1) %>% 
+  select(year_of_birth, ethnicity, childs_first_name) %>% 
+  pivot_wider(names_from = "year_of_birth", values_from = "childs_first_name")
+
+boy_names
+```
+
+```{r}
+#Scatterplot of number of children with a name vs rank in popularity for male, white non-hispanic children in 2016
+baby_names %>% 
+  filter(gender == "MALE", ethnicity == "WHITE NON HISPANIC", year_of_birth == 2016) %>% 
+  ggplot(aes(x = rank, y = count)) + geom_point()
+```
+
